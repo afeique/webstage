@@ -60,7 +60,9 @@ When defining tests in modules, there are two ways to organize them:
 
 import os
 import json
+import socket
 import argparse
+import requests
 from datetime import datetime
 
 import pytest
@@ -134,6 +136,7 @@ class Config():
 
     def load(self, config_file: str) -> None:
         """Load options from a config file, overwriting attributes."""
+        self.file = config_file
         # load options from config file
         with open(config_file) as f:
             cfg = json.loads(f.read())
@@ -211,7 +214,20 @@ def config(pytestconfig) -> Config:
 @pytest.fixture(scope="session", autouse=True)
 def session(config) -> object:
     """Create a webdriver instance and login the configured user."""
-    # create a new  RemoteWebdriver instance using the args inthe config
+    # test the base URL in the config to ensure it works
+    # http://docs.python-requests.org/en/master/api/#requests.Response
+    r = None  # holds the response object
+    try:
+        r = requests.get(config.url)
+    except requests.exceptions.RequestException as e:
+        pytest.exit(f'\nProblem with {config.file}:\n' + str(e))
+
+    if r is not None and r.status_code != 200:
+        msg = f'\nInvalid URL "{config.url}" in {config.file}:\n' +\
+            f'Got HTTP status: {r.status_code} {r.reason}'
+        pytest.exit(msg)
+
+    # create a new  RemoteWebdriver instance using the args in the config
     driver = webdriver.Remote(**config.webdriver)
     driver.maximize_window()
     driver.get(config.url)
