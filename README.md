@@ -12,20 +12,21 @@ These are acceptance tests which can be run using `pytest`. Many of these tests
 
 ### Python
 
-It is recommended to install [Miniconda] and use `conda` to manage your Python
- installations using virtual environments. [Miniconda] is cross-platform, fast to
- download, and easy to get up and running. The `conda` package manager can easily
- install precompiled which is particularly handy for Windows systems.
+[Miniconda] is recommended. It is cross-platform, fast to download,
+ and has tools for managing Python environments out-of-the-box. Its
+ package manager can install precompiled packages which is handy for
+ Windows systems.
 
 [Anaconda] is the full-featured download which comes with all the pre-compiled
-libraries supported by `conda`. It is considerably bigger as a result.
+ libraries supported by `conda`. It is considerably bigger as a result.
 
 [Anaconda]: https://www.anaconda.com/distribution/
 [Miniconda]: https://docs.conda.io/en/latest/miniconda.html
 
-### Virtual Environments
+### Environments
 
-To setup and manage virtual environments using `conda`, refer to:
+It is recommended to use isolated Python environments. To setup and manage
+ Python environments using `conda`, refer to:
 
 - [Official Cheat-sheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf)
 - [Continuum Cheat-sheet](http://know.continuum.io/rs/387-XNW-688/images/conda-cheatsheet.pdf)
