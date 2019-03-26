@@ -60,14 +60,13 @@ When defining tests in modules, there are two ways to organize them:
 
 import os
 import json
-import socket
 import argparse
-import requests
 from datetime import datetime
 
 import pytest
-from selenium import webdriver
+import requests
 from py.xml import html
+from selenium import webdriver
 
 
 # defines config filename to store options in
