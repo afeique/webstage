@@ -4,3 +4,4 @@ __pycache__
 config.yaml
 .vscode
 .sublime-project
+config.json
