@@ -49,4 +49,6 @@ and the [selenium standalone server].
 
 ## Run Tests
 
-Simply run `pytest` from within the directory.
+Run the selenium standalone server in a terminal. Then navigate to the source directory and run:
+
+    pytest

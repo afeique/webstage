@@ -60,6 +60,7 @@ When defining tests in modules, there are two ways to organize them:
 
 import os
 import json
+import urllib3
 import argparse
 from datetime import datetime
 
@@ -214,20 +215,35 @@ def config(pytestconfig) -> Config:
 def session(config) -> object:
     """Create a webdriver instance and login the configured user."""
     # test the base URL in the config to ensure it works
-    # http://docs.python-requests.org/en/master/api/#requests.Response
+    # http://docs.python-requests.org/en/master/api#requests.Response
     r = None  # holds the response object
     try:
         r = requests.get(config.url)
     except requests.exceptions.RequestException as e:
         pytest.exit(f'\nProblem with {config.file}:\n' + str(e))
 
-    if r is not None and r.status_code != 200:
-        msg = f'\nInvalid URL "{config.url}" in {config.file}:\n' +\
-            f'Got HTTP status: {r.status_code} {r.reason}'
+    msg = f'\nInvalid URL "{config.url}" in {config.file}'
+    if r is not None:
+        if r.status_code != 200 or r.headers["content-type"] != "text/html; charset=UTF-8":
+            msg += f'\nGot HTTP status: {r.status_code} {r.reason}' +\
+                f'\nContent-Type: {r.headers["content-type"]}'
+            pytest.exit(msg)
+    else:
         pytest.exit(msg)
 
     # create a new  RemoteWebdriver instance using the args in the config
-    driver = webdriver.Remote(**config.webdriver)
+    msg = ""
+    try:
+        driver = webdriver.Remote(**config.webdriver)
+    except urllib3.exceptions.MaxRetryError:
+        msg = f"\nCould not connect to selenium server: " +\
+            config.webdriver["command_executor"] +\
+            "\nEnsure the server is installed and running."
+    
+    # performing pytest.exit() outside the try-except is faster for some reason
+    if msg:
+        pytest.exit(msg)
+    
     driver.maximize_window()
     driver.get(config.url)
 
