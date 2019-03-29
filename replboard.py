@@ -8,7 +8,7 @@ from selenium import webdriver
 
 command_executor = "http://127.0.0.1:4444/wd/hub"
 desired_capabilities = {
-    "browserName": "firefox",
+    "browserName": "chrome",
     "chromeOptions": {
         "args": [
             "--disable-extensions",
