@@ -64,9 +64,10 @@ from datetime import datetime
 import pytest
 import urllib3
 import requests
+import validators
 from py.xml import html
 from selenium import webdriver
-from datto import Config, Actor
+from datto import PytestConfig, Actor
 
 # defines config filename to store options in
 CONFIG_FILE = "config.json"
@@ -82,27 +83,11 @@ def config(pytestconfig) -> Config:
 @pytest.fixture(scope="session", autouse=True)
 def session(config) -> object:
     """Create a webdriver instance and login the configured user."""
-    # test the base URL in the config to ensure it works
-    # http://docs.python-requests.org/en/master/api#requests.Response
-    r = None  # holds the response object
-    try:
-        r = requests.get(config.url)
-    except requests.exceptions.RequestException as e:
-        pytest.exit(f'\nProblem with {config.file}:\n' + str(e))
-
-    msg = f'\nInvalid URL "{config.url}" in {config.file}'
-    if r is not None:
-        if r.status_code != 200 or r.headers["content-type"] != "text/html; charset=UTF-8":
-            msg += f'\nGot HTTP status: {r.status_code} {r.reason}' +\
-                f'\nContent-Type: {r.headers["content-type"]}'
-            pytest.exit(msg)
-    else:
-        pytest.exit(msg)
 
     # create a new  RemoteWebdriver instance using the args in the config
     msg = ""
     try:
-        driver = webdriver.Remote(**config.webdriver)
+        actor = webdriver.Remote(**config.webdriver)
     except urllib3.exceptions.MaxRetryError:
         msg = f"\nCould not connect to selenium server: " +\
             config.webdriver["command_executor"] +\
@@ -112,18 +97,18 @@ def session(config) -> object:
     if msg:
         pytest.exit(msg)
 
-    driver.maximize_window()
-    driver.get(config.url)
+    actor.maximize_window()
+    actor.get(config.baseUrl)
 
     # login
-    driver.find_element_by_id("username").send_keys(config.username)
-    driver.find_element_by_id("password").send_keys(config.password)
-    driver.find_element_by_id("loginButton").click()
+    actor.find_element_by_id("username").send_keys(config.username)
+    actor.find_element_by_id("password").send_keys(config.password)
+    actor.find_element_by_id("loginButton").click()
 
-    yield driver
+    yield actor
 
     # session teardown, close browser window
-    driver.close()
+    actor.close()
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -141,11 +126,11 @@ def pytest_addoption(parser):
         help=argparse.SUPPRESS
     )
     # add options that can be passed in via the command line as args
-    parser.addoption("--url", action="store", default=cfg.url,
-        help="URL of device, defaults to value in config.yaml")
-    parser.addoption("--username", action="store", default=cfg.username,
+    parser.addoption("--baseUrl", "--base-url", action="store", dest="baseUrl", default=cfg.baseUrl,
+        help="Base URL of device, defaults to value in config.yaml")
+    parser.addoption("--username", action="store", dest="username", default=cfg.username,
         help="Username for logging in, defaults to value in config.yaml")
-    parser.addoption("--password", action="store", default=cfg.password,
+    parser.addoption("--password", action="store", dest="password", default=cfg.password,
         help="Password for logging in, defaults to value in config.yaml")
 
 
@@ -155,10 +140,10 @@ def pytest_collection_modifyitems(config, items):
     cfg = config.getoption("cfg")
 
     # override config object options with commandline options
-    for commandline_opt in cfg.commandline_options:
-        value = config.getoption(commandline_opt)
+    for cliOption in cfg.CLI_OPTIONS:
+        value = config.getoption(cliOption)
         if value:
-            setattr(cfg, commandline_opt, value)
+            setattr(cfg, cliOption, value)
 
 
 @pytest.mark.optionalhook

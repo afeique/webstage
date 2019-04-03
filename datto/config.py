@@ -3,9 +3,11 @@
 import os
 import json
 import pytest
+import requests
+import validators
 
 
-class Config():
+class PytestConfig():
     """Stores configuration options passed between tests.
 
     Options are stored in a configuration file. These options
@@ -24,13 +26,13 @@ class Config():
         password (str): Password to use for test session.
     """
 
-    commandline_options = ["url", "username", "password"]
-    required_options = commandline_options
-    all_options = required_options + ["webdriver"]
-    required_webdriver_args = ["command_executor", "desired_capabilities"]
+    CLI_OPTIONS = ["baseUrl", "username", "password"]
+    REQUIRED_OPTIONS = CLI_OPTIONS
+    ALL_OPTIONS = REQUIRED_OPTIONS + ["webdriver"]
+    REQUIRED_WEBDRIVER_ARGS = ["command_executor", "desired_capabilities"]
 
     default = {
-        "url": "http://",
+        "baseUrl": "http://",
         "username": "datto",
         "password": "datto100",
         "webdriver": {
@@ -51,25 +53,25 @@ class Config():
     DEFAULT_WEBDRIVER_ARGS = json.dumps(default["webdriver"], indent=4) +\
         "\n\nSee: https://github.com/SeleniumHQ/selenium/wiki/DesiredCapabilities"
 
-    def __init__(self, config_file: str):
+    def __init__(self, configFile: str):
         """Inits Config object with options from config file."""
-        self.url = self.default["url"]
+        self.baseUrl = self.default["baseUrl"]
         self.username = self.default["username"]
         self.password = self.default["password"]
         self.webdriver = self.default["webdriver"]
 
         # create config file with reasonable defaults if it doesn't exist
-        if not os.path.isfile(config_file):
-            with open(config_file, 'w') as f:
+        if not os.path.isfile(configFile):
+            with open(configFile, 'w') as f:
                 f.write(self.DEFAULT_CONFIG)
-                pytest.exit(f"Created default {config_file}, please update it.")
-        self.load(config_file)
+                pytest.exit(f"Created default {configFile}, please update it.")
+        self.load(configFile)
 
-    def load(self, config_file: str) -> None:
+    def load(self, configFile: str) -> None:
         """Load options from a config file, overwriting attributes."""
-        self.file = config_file
+        self.file = configFile
         # load options from config file
-        with open(config_file) as f:
+        with open(configFile) as f:
             cfg = json.loads(f.read())
 
         # populate object attributes with values loaded from config file
@@ -78,58 +80,81 @@ class Config():
             setattr(self, key, cfg[key])
 
         # ensure required options are specified, compile list of missing options
-        missing_options = []
-        missing_commandline_options = []
-        for required_opt in self.required_options:
-            if not hasattr(self, required_opt):
-                missing_options.append(required_opt)
-                if required_opt in self.commandline_options:
-                    missing_commandline_options.append(required_opt)
+        missingOptions = []
+        missingCliOptions = []
+        for requiredOption in self.REQUIRED_OPTIONS:
+            if not hasattr(self, requiredOption):
+                missingOptions.append(requiredOption)
+                if requiredOption in self.CLI_OPTIONS:
+                    missingCliOptions.append(requiredOption)
 
         # exit with error message if any required options are missing
-        if any(missing_options):
+        if any(missingOptions):
             msg = \
-                f"\nThe following required options are missing from {config_file}:\n" +\
-                '"' + {', "'.join(missing_options)} + '"\n\n' +\
+                f"\nThe following required options are missing from {configFile}:\n" +\
+                '"' + {', "'.join(missingOptions)} + '"\n\n' +\
                 f"Some options can be passed in via commandline args:\n" +\
-                '"--' + {', "--'.join(missing_commandline_options)} + '"'
+                '"--' + {', "--'.join(missingCliOptions)} + '"'
             pytest.exit(msg)
 
         # set warning message for missing webdriver option or args
-        webdriver_msg = ""
+        webdriverMsg = ""
         if not hasattr(self, "webdriver"):
-            webdriver_msg = f'\n\nThe "webdriver" option is missing from ' +\
-                f'{config_file}\n\n'
+            webdriverMsg = f'\n\nThe "webdriver" option is missing from ' +\
+                f'{configFile}\n\n'
         else:
             # check remote webdriver args
-            missing_webdriver_args = []
-            for required_arg in self.required_webdriver_args:
-                if required_arg not in self.webdriver:
-                    missing_webdriver_args.append(required_arg)
+            missingWebdriverArgs = []
+            for requiredArg in self.REQUIRED_WEBDRIVER_ARGS:
+                if requiredArg not in self.webdriver:
+                    missingWebdriverArgs.append(requiredArg)
 
             # set warning message if any webdriver args are missing
-            if any(missing_webdriver_args):
-                webdriver_msg = \
-                    f'\n\nThe following "webdriver" arguments are missing from {config_file}:\n"' +\
-                    {', "'.join(missing_webdriver_args)} + '"\n\n'
+            if any(missingWebdriverArgs):
+                webdriverMsg = \
+                    f'\n\nThe following "webdriver" arguments are missing from {configFile}:\n"' +\
+                    {', "'.join(missingWebdriverArgs)} + '"\n\n'
 
         # cleanup
-        if not self.url.endswith("/"):
-            self.url += "/"
+        self.baseUrl = self.baseUrl.rstrip("/")
 
         # write webdriver defaults to config file if they are unspecified
-        if webdriver_msg:
+        if webdriverMsg:
             self.webdriver = self.default["webdriver"]
-            self.save(config_file)
-            webdriver_msg += f'Wrote "webdriver" arguments to ' +\
-                f'{config_file}:\n' + self.DEFAULT_WEBDRIVER_ARGS
-            pytest.exit(webdriver_msg)
+            self.save(configFile)
+            webdriverMsg += f'Wrote "webdriver" arguments to ' +\
+                f'{configFile}:\n' + self.DEFAULT_WEBDRIVER_ARGS +\
+                f'\n\nPlease update {configFile}'
+            pytest.exit(webdriverMsg)
 
-    def save(self, config_file: str = None) -> None:
+        # validate the base URL in the config to ensure it's a real URL
+        # https://validators.readthedocs.io/en/latest/#module-validators.url
+        if not validators.url(self.baseUrl):
+            msg = f'\nInvalid base URL "{self.baseUrl}" in {configFile}'
+            pytest.exit(msg)
+
+        # if the base URL is valid, test it with an HTTP GET to make sure it works
+        # http://docs.python-requests.org/en/master/api#requests.Response
+        r = None  # holds the response object
+        try:
+            r = requests.get(self.baseUrl)
+        except requests.exceptions.RequestException as e:
+            pytest.exit(f'\nProblem with {configFile}:\n' + str(e))
+
+        msg = f'\nUnreachable base URL "{self.baseUrl}" in {configFile}'
+        if r is not None:
+            if r.status_code != 200 or r.headers["content-type"] != "text/html; charset=UTF-8":
+                msg += f'\nGot HTTP status: {r.status_code} {r.reason}' +\
+                    f'\nContent-Type: {r.headers["content-type"]}'
+                pytest.exit(msg)
+        else:
+            pytest.exit(msg)
+
+    def save(self, configFile: str = None) -> None:
         """Saves Config options to JSON."""
         output = {}
-        for opt in self.all_options:
+        for opt in self.ALL_OPTIONS:
             output[opt] = getattr(self, opt)
-        if config_file:
-            with open(config_file, 'w') as f:
+        if configFile:
+            with open(configFile, 'w') as f:
                 f.write(json.dumps(output, indent=4))

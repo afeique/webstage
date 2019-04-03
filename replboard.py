@@ -18,3 +18,6 @@ desired_capabilities = {
 }
 
 driver = webdriver.Remote(command_executor, desired_capabilities)
+driver.maximize_window()
+driver.get("http://higgs-boson")
+driver.get("/configure/device")
