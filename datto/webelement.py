@@ -1,16 +1,21 @@
 """Defines an encapsulated selenium webelement with english-language methods for searching and asserting."""
 
-import selenium
-from typing import Union
+from selenium.webdriver.remote.webelement import WebElement
 
-class WebElement():
+
+class Element(WebElement):
     """Encapsulates a selenium webelement with additional information and methods for assertions."""
 
-    def __init__(self, something: selenium.webdriver.remote.webelement.WebElement):
+    def __init__(self, webElement: WebElement):
+        self.webElement = webElement
+
+    def __getattr__(self, attr: str):
+        return getattr(self.webElement, attr)
+
+    def andHasText(self, text: str):
+        """Check for text in a given element"""
         pass
 
-    def and_it_has_text(self, something: str):
-        pass
-
-    def and_it_has_html(self, something: str):
+    def andHasHtml(self, html: str):
+        """Check for HTML in a given element"""
         pass

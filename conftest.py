@@ -3,8 +3,12 @@ defaults are stored in a configuration file and certain options can be
 overridden from the commandline.
 
 Selenium RemoteWebdriver is used for browser instrumentation.
-Either a local instance of the Selenium standalone server must be running
-or a remote Selenium server must be specified as the command_executor.
+The datto.Actor class extends the RemoteWebdriver class and adds methods
+for BDD-oriented syntax and acceptance testing.
+
+To run an instance of a RemoteWebdriver, either a local instance of the 
+Selenium standalone server must be running or a remote Selenium server 
+must be specified as the command_executor.
 
 The RemoteWebdriver is the only supported type of webdriver class for
 simplicity and flexibility. It supports a dictionary configuration for
@@ -62,33 +66,36 @@ import argparse
 from datetime import datetime
 
 import pytest
-import urllib3
-import requests
-import validators
+from urllib3.exceptions import MaxRetryError
+from selenium.webdriver import Remote as WebDriver
 from py.xml import html
-from selenium import webdriver
-from datto import PytestConfig, Actor
+
+import datto
 
 # defines config filename to store options in
 CONFIG_FILE = "config.json"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def config(pytestconfig) -> Config:
+def config(pytestconfig) -> datto.Config:
     """Fixture returning a Config object for the session."""
     # yield the existing Config object in pytestconfig
     yield pytestconfig.getoption("cfg")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def session(config) -> object:
-    """Create a webdriver instance and login the configured user."""
+def leadActor(config) -> datto.Actor:
+    """Yields a lead actor to use for the entire performance.
+
+    A datto.Actor encapsulates a webdriver instance. On init, the actor 
+    logs in as the configured user at the specified base URL.
+    """
 
     # create a new  RemoteWebdriver instance using the args in the config
     msg = ""
     try:
-        actor = webdriver.Remote(**config.webdriver)
-    except urllib3.exceptions.MaxRetryError:
+        actor = datto.Actor(WebDriver(**config.webdriver), config)
+    except MaxRetryError:
         msg = f"\nCould not connect to selenium server: " +\
             config.webdriver["command_executor"] +\
             "\nEnsure the server is installed and running."
@@ -97,19 +104,16 @@ def session(config) -> object:
     if msg:
         pytest.exit(msg)
 
-    actor.maximize_window()
-    actor.get(config.baseUrl)
-
-    # login
-    actor.find_element_by_id("username").send_keys(config.username)
-    actor.find_element_by_id("password").send_keys(config.password)
-    actor.find_element_by_id("loginButton").click()
-
     yield actor
 
     # session teardown, close browser window
-    actor.close()
+    actor.finish()
 
+
+@pytest.fixture(scope="function")
+def I(leadActor) -> datto.Actor:
+    """Perform cleanup between acts"""
+    yield leadActor
 
 @pytest.fixture(scope="module", autouse=True)
 def reset():
@@ -118,7 +122,7 @@ def reset():
 
 def pytest_addoption(parser):
     """Add commandline options to pytest and load configuration file."""
-    cfg = Config(CONFIG_FILE)
+    cfg = datto.Config(CONFIG_FILE)
 
     # pass loaded config object through hidden arg
     parser.addoption(
@@ -127,11 +131,11 @@ def pytest_addoption(parser):
     )
     # add options that can be passed in via the command line as args
     parser.addoption("--baseUrl", "--base-url", action="store", dest="baseUrl", default=cfg.baseUrl,
-        help="Base URL of device, defaults to value in config.yaml")
+        help="Base URL of device, defaults to value in config.json")
     parser.addoption("--username", action="store", dest="username", default=cfg.username,
-        help="Username for logging in, defaults to value in config.yaml")
+        help="Username for logging in, defaults to value in config.json")
     parser.addoption("--password", action="store", dest="password", default=cfg.password,
-        help="Password for logging in, defaults to value in config.yaml")
+        help="Password for logging in, defaults to value in config.json")
 
 
 def pytest_collection_modifyitems(config, items):

@@ -2,8 +2,8 @@
 directly in the python interpreter, for REPL.
 """
 
-import sure
-import expects
+# import sure
+# import expects
 from selenium import webdriver
 
 command_executor = "http://127.0.0.1:4444/wd/hub"

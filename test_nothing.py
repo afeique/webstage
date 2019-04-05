@@ -1,3 +1,4 @@
 
-def test_nothing(config):
+def test_nothing(leadActor):
+    I = leadActor
     pass

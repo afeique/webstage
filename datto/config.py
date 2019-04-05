@@ -1,13 +1,13 @@
 """Defines a Config class for storing configuration options."""
 
 import os
+import sys
 import json
-import pytest
 import requests
-import validators
+from urllib.parse import urlparse
 
 
-class PytestConfig():
+class Config():
     """Stores configuration options passed between tests.
 
     Options are stored in a configuration file. These options
@@ -64,7 +64,7 @@ class PytestConfig():
         if not os.path.isfile(configFile):
             with open(configFile, 'w') as f:
                 f.write(self.DEFAULT_CONFIG)
-                pytest.exit(f"Created default {configFile}, please update it.")
+                self.exit(f"Created default {configFile}, please update it.")
         self.load(configFile)
 
     def load(self, configFile: str) -> None:
@@ -90,18 +90,16 @@ class PytestConfig():
 
         # exit with error message if any required options are missing
         if any(missingOptions):
-            msg = \
-                f"\nThe following required options are missing from {configFile}:\n" +\
+            msg = f"The following required options are missing from {configFile}:\n" +\
                 '"' + {', "'.join(missingOptions)} + '"\n\n' +\
                 f"Some options can be passed in via commandline args:\n" +\
                 '"--' + {', "--'.join(missingCliOptions)} + '"'
-            pytest.exit(msg)
+            self.exit(msg)
 
         # set warning message for missing webdriver option or args
         webdriverMsg = ""
         if not hasattr(self, "webdriver"):
-            webdriverMsg = f'\n\nThe "webdriver" option is missing from ' +\
-                f'{configFile}\n\n'
+            webdriverMsg = f'The "webdriver" options are missing from {configFile}'
         else:
             # check remote webdriver args
             missingWebdriverArgs = []
@@ -112,43 +110,62 @@ class PytestConfig():
             # set warning message if any webdriver args are missing
             if any(missingWebdriverArgs):
                 webdriverMsg = \
-                    f'\n\nThe following "webdriver" arguments are missing from {configFile}:\n"' +\
+                    f'The following "webdriver" options are missing from {configFile}:\n"' +\
                     {', "'.join(missingWebdriverArgs)} + '"\n\n'
-
-        # cleanup
-        self.baseUrl = self.baseUrl.rstrip("/")
 
         # write webdriver defaults to config file if they are unspecified
         if webdriverMsg:
             self.webdriver = self.default["webdriver"]
             self.save(configFile)
-            webdriverMsg += f'Wrote "webdriver" arguments to ' +\
+            webdriverMsg += f'Wrote default "webdriver" options to ' +\
                 f'{configFile}:\n' + self.DEFAULT_WEBDRIVER_ARGS +\
-                f'\n\nPlease update {configFile}'
-            pytest.exit(webdriverMsg)
+                f'\n\nPlease update {configFile} and re-run'
+            self.exit(webdriverMsg)
 
-        # validate the base URL in the config to ensure it's a real URL
-        # https://validators.readthedocs.io/en/latest/#module-validators.url
-        if not validators.url(self.baseUrl):
-            msg = f'\nInvalid base URL "{self.baseUrl}" in {configFile}'
-            pytest.exit(msg)
+        # use urllib.parse.urlparse to check the scheme
+        parsedUrl = urlparse(self.baseUrl.rstrip("/"))
+        # if http:// or https:// not specified, assume http://
+        # but only if there is either a netloc or path (something more than just a scheme)
+        if not parsedUrl.scheme and (parsedUrl.netloc or parsedUrl.path):
+            self.baseUrl = "http://" + self.baseUrl
+            parsedUrl = urlparse(self.baseUrl)
+        elif parsedUrl.scheme not in ["http", "https"]:
+            # error if non HTTP scheme is given
+            msg = f'\nBase URL in {configFile} must be HTTP or HTTPS, ' +\
+                f'"\n{parsedUrl.scheme.upper()}" given:\n{self.baseUrl}'
+            self.exit(msg)
 
-        # if the base URL is valid, test it with an HTTP GET to make sure it works
+        #  ensure there is a netloc or path after the http(s)://
+        if not (parsedUrl.netloc or parsedUrl.path):
+            msg = f'\nInvalid URL in {configFile}:\n{self.baseUrl}'
+            self.exit(msg)
+
+        # if the base URL is valid, test it with a GET request to make sure it works
         # http://docs.python-requests.org/en/master/api#requests.Response
         r = None  # holds the response object
         try:
             r = requests.get(self.baseUrl)
         except requests.exceptions.RequestException as e:
-            pytest.exit(f'\nProblem with {configFile}:\n' + str(e))
+            self.exit(f'\nProblem with {configFile}:\n' + str(e))
 
-        msg = f'\nUnreachable base URL "{self.baseUrl}" in {configFile}'
+        msg = f'Unreachable base URL in {configFile}:\n{self.baseUrl}'
         if r is not None:
             if r.status_code != 200 or r.headers["content-type"] != "text/html; charset=UTF-8":
                 msg += f'\nGot HTTP status: {r.status_code} {r.reason}' +\
                     f'\nContent-Type: {r.headers["content-type"]}'
-                pytest.exit(msg)
+                self.exit(msg)
         else:
+            self.exit(msg)
+
+    def exit(self, msg: str) -> None:
+        """Exit using self.exit if we're running a pytest session, else just exit"""
+        # space out whatever comes after the exit message
+        msg = f'\n\n!!!\n{msg}\n\n!!!\n\n'
+        # if we're running from within a pytest session
+        if "pytest" in sys.modules:
+            import pytest
             pytest.exit(msg)
+        exit(msg)
 
     def save(self, configFile: str = None) -> None:
         """Saves Config options to JSON."""

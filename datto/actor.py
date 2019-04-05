@@ -1,52 +1,68 @@
 """Defines an Actor class representing a user and used to encapsulate drivers."""
 
-import selenium
 from typing import Union
+from urllib.parse import urlparse
 
-from .webelement import WebElement
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver import Remote as WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
-class Actor(selenium.webdriver.Remote):
-    def __init__(self, baseUrl: str):
-        self.webdriver = webdriver
-        self.baseUrl = baseUrl
+from .config import Config
+from .element import Element
 
-    def __getattr__(self, attr: str):
-        """Passthrough calls to unknown attributes to the encapsulated webdriver"""
-        if hasattr(self.webdriver, attr):
-            return getattr(self.webdriver, attr)
-        return super().__getattribute__(attr)
+
+class Actor():
+    """Encapsulates the selenium remote webdriver class"""
+
+    def __init__(self, driver: WebDriver, config: Config):
+        self.driver = driver
+        self.baseUrl = config.baseUrl
+
+        self.driver.maximize_window()
+        self.driver.get(config.baseUrl)
+
+        # login
+        self.driver.find_element_by_id("username").send_keys(config.username)
+        self.driver.find_element_by_id("password").send_keys(config.password)
+        self.driver.find_element_by_id("loginButton").click()
+
+    # def __getattr__(self, attr: str):
+    #     # passthru unknown attribute calls to the encapsulated webdriver
+    #     return self.driver.__getattribute__(attr)
+
+    def finish(self):
+        """Cleanup"""
+        self.driver.close()
 
     def goto(self, url: str):
-        """Go to a particular url, or a page under the base url"""
-        if url.startswith("http://")
-        self.webdriver.get(url)
+        """Go to a particular url, or a path under the base url"""
+        parsedUrl = urlparse(url)
+        # if there is no scheme and netloc, this is a path under the base url
+        if not parsedUrl.scheme and not parsedUrl.path:
+            # prepend the base url
+            url = f'{self.baseUrl}/{parsedUrl.path.lstrip("/")}'
+            parsedUrl = urlparse(url)
+        self.driver.get(url)
 
-    def see(self, something: Union[str, selenium.webdriver.remote.webelement.WebElement]):
+    def see(self, something: Union[str, WebElement]) -> Element:
+        """Check if a particular element exists on the page"""
         if type(something) is str:
             # convert everything to an xpath
             # id
             if something.startswith("#"):
-                return WebElement(self.webdriver.find_element_by_id(something))
+                return Element(self.driver.find_element_by_id(something))
             # class
-            elif something.startswith("."):
-                return WebElement(self.webdriver.find_element_by_class(something))
+            if something.startswith("."):
+                return Element(self.driver.find_element_by_class_name(something))
             # xpath
-            elif something.startswith("//"):
-                return WebElement(self.webdriver.find_element_by_xpath(something))
-            else:
-                try:
-                    return WebElement(self.webdriver.find_element_by_css_selector(something))
-                except selenium.common.exceptions.NoSuchElementException:
-                    return WebElement(self.webdriver.find_element_by_name(something))
-
-    def andSee(self, something: Union[str, selenium.webdriver.remote.webelement.WebElement]):
-        """Alias for see()."""
-        return self.see(something)
-
-    def sees(self, something: Union[str, selenium.webdriver.remote.webelement.WebElement]):
-        """Alias for see()."""
-        return self.see(something)
+            if something.startswith("//"):
+                return Element(self.driver.find_element_by_xpath(something))
+            # CSS selector
+            try:
+                return Element(self.driver.find_element_by_css_selector(something))
+            except NoSuchElementException:
+                return Element(self.driver.find_element_by_name(something))
 
     def seeLink(self, text: str):
-        return WebElement(self.webdriver.find_element_by_partial_link_text(text))
-
+        """See a link with given text"""
+        return Element(self.driver.find_element_by_partial_link_text(text))
