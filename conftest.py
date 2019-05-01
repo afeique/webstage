@@ -70,21 +70,21 @@ from urllib3.exceptions import MaxRetryError
 from selenium.webdriver import Remote as WebDriver
 from py.xml import html
 
-import datto
+import webstage
 
 # defines config filename to store options in
 CONFIG_FILE = "config.json"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def config(pytestconfig) -> datto.Config:
+def config(pytestconfig) -> webstage.Config:
     """Fixture returning a Config object for the session."""
     # yield the existing Config object in pytestconfig
     yield pytestconfig.getoption("cfg")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def leadActor(config) -> datto.Actor:
+def leadActor(config) -> webstage.Actor:
     """Yields a lead actor to use for the entire performance.
 
     A datto.Actor encapsulates a webdriver instance. On init, the actor 
@@ -94,7 +94,7 @@ def leadActor(config) -> datto.Actor:
     # create a new  RemoteWebdriver instance using the args in the config
     msg = ""
     try:
-        actor = datto.Actor(WebDriver(**config.webdriver), config)
+        actor = webstage.Actor(WebDriver(**config.webdriver), config)
     except MaxRetryError:
         msg = f"\nCould not connect to selenium server: " +\
             config.webdriver["command_executor"] +\
@@ -111,7 +111,7 @@ def leadActor(config) -> datto.Actor:
 
 
 @pytest.fixture(scope="function")
-def I(leadActor) -> datto.Actor:
+def I(leadActor) -> webstage.Actor:
     """Perform cleanup between acts"""
     yield leadActor
 
@@ -122,7 +122,7 @@ def reset():
 
 def pytest_addoption(parser):
     """Add commandline options to pytest and load configuration file."""
-    cfg = datto.Config(CONFIG_FILE)
+    cfg = webstage.Config(CONFIG_FILE)
 
     # pass loaded config object through hidden arg
     parser.addoption(
