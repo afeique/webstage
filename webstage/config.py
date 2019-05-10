@@ -160,7 +160,7 @@ class Config():
     def exit(self, msg: str) -> None:
         """Exit using self.exit if we're running a pytest session, else just exit"""
         # space out whatever comes after the exit message
-        msg = f'\n\n!!!\n{msg}\n\n!!!\n\n'
+        msg = f'\n\n!!!\n\n{msg}\n\n!!!\n\n'
         # if we're running from within a pytest session
         if "pytest" in sys.modules:
             import pytest
