@@ -130,7 +130,7 @@ def pytest_addoption(parser):
         help=argparse.SUPPRESS
     )
     # add options that can be passed in via the command line as args
-    parser.addoption("--baseUrl", "--base-url", action="store", dest="baseUrl", default=cfg.baseUrl,
+    parser.addoption("--base-url", action="store", dest="base_url", default=cfg.base_url,
         help="Base URL of device, defaults to value in config.json")
     parser.addoption("--username", action="store", dest="username", default=cfg.username,
         help="Username for logging in, defaults to value in config.json")
@@ -144,10 +144,10 @@ def pytest_collection_modifyitems(config, items):
     cfg = config.getoption("cfg")
 
     # override config object options with commandline options
-    for cliOption in cfg.CLI_OPTIONS:
-        value = config.getoption(cliOption)
+    for cli_option in cfg.CLI_OPTIONS:
+        value = config.getoption(cli_option)
         if value:
-            setattr(cfg, cliOption, value)
+            setattr(cfg, cli_option, value)
 
 
 @pytest.mark.optionalhook
