@@ -84,10 +84,10 @@ def config(pytestconfig) -> webstage.Config:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def leadActor(config) -> webstage.Actor:
+def lead_actor(config) -> webstage.Actor:
     """Yields a lead actor to use for the entire performance.
 
-    A datto.Actor encapsulates a webdriver instance. On init, the actor 
+    A webstage.Actor encapsulates a webdriver instance. On init, the actor 
     logs in as the configured user at the specified base URL.
     """
 
@@ -111,9 +111,9 @@ def leadActor(config) -> webstage.Actor:
 
 
 @pytest.fixture(scope="function")
-def I(leadActor) -> webstage.Actor:
+def I(lead_actor) -> webstage.Actor:
     """Perform cleanup between acts"""
-    yield leadActor
+    yield lead_actor
 
 @pytest.fixture(scope="module", autouse=True)
 def reset():
