@@ -16,14 +16,10 @@ class Config():
 
     Certain configuration options can be overridden by passing
     in commandline arguments through pytest. These options include:
-    * url
-    * username
-    * password
+    * base_url
 
     Attributes:
-        url (str): The base URL of the DUT.
-        username (str): Username to use for test session.
-        password (str): Password to use for test session.
+        base_url (str): The base URL of the site being tested.
     """
 
     CLI_OPTIONS = ["base_url", "username", "password"]
@@ -33,8 +29,6 @@ class Config():
 
     default = {
         "base_url": "http://",
-        "username": "datto",
-        "password": "datto100",
         "webdriver": {
             "command_executor": "http://127.0.0.1:4444/wd/hub",
             "desired_capabilities": {
