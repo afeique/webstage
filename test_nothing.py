@@ -1,4 +1,4 @@
 
-def test_nothing(I):
-    I.goto("http://google.com")
+def test_nothing(I, config):
+    I.go_home()
     pass

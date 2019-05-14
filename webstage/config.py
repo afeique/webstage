@@ -22,7 +22,7 @@ class Config():
         base_url (str): The base URL of the site being tested.
     """
 
-    CLI_OPTIONS = ["base_url", "username", "password"]
+    CLI_OPTIONS = ["base_url"]
     REQUIRED_OPTIONS = CLI_OPTIONS
     ALL_OPTIONS = REQUIRED_OPTIONS + ["webdriver"]
     REQUIRED_WEBDRIVER_ARGS = ["command_executor", "desired_capabilities"]
@@ -50,8 +50,6 @@ class Config():
     def __init__(self, config_file: str):
         """Inits Config object with options from config file."""
         self.base_url = self.default["base_url"]
-        self.username = self.default["username"]
-        self.password = self.default["password"]
         self.webdriver = self.default["webdriver"]
 
         # create config file with reasonable defaults if it doesn't exist
@@ -74,18 +72,18 @@ class Config():
             setattr(self, key, cfg[key])
 
         # ensure required options are specified, compile list of missing options
-        missingOptions = []
+        missing_options = []
         missing_cli_options = []
         for required_option in self.REQUIRED_OPTIONS:
             if not hasattr(self, required_option):
-                missingOptions.append(required_option)
+                missing_options.append(required_option)
                 if required_option in self.CLI_OPTIONS:
                     missing_cli_options.append(required_option)
 
         # exit with error message if any required options are missing
-        if any(missingOptions):
+        if any(missing_options):
             msg = f"The following required options are missing from {config_file}:\n" +\
-                '"' + {', "'.join(missingOptions)} + '"\n\n' +\
+                '"' + {', "'.join(missing_options)} + '"\n\n' +\
                 f"Some options can be passed in via commandline args:\n" +\
                 '"--' + {', "--'.join(missing_cli_options)} + '"'
             self.exit(msg)
@@ -97,9 +95,9 @@ class Config():
         else:
             # check remote webdriver args
             missing_webdriver_args = []
-            for requiredArg in self.REQUIRED_WEBDRIVER_ARGS:
-                if requiredArg not in self.webdriver:
-                    missing_webdriver_args.append(requiredArg)
+            for required_arg in self.REQUIRED_WEBDRIVER_ARGS:
+                if required_arg not in self.webdriver:
+                    missing_webdriver_args.append(required_arg)
 
             # set warning message if any webdriver args are missing
             if any(missing_webdriver_args):

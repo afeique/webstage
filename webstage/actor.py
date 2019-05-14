@@ -17,9 +17,7 @@ class Actor():
     def __init__(self, driver: WebDriver, config: Config):
         self.driver = driver
         self.base_url = config.base_url
-
         self.driver.maximize_window()
-        self.driver.get(config.base_url)
 
     # def __getattr__(self, attr: str):
     #     # passthru unknown attribute calls to the encapsulated webdriver
@@ -28,6 +26,9 @@ class Actor():
     def finish(self):
         """Cleanup"""
         self.driver.close()
+
+    def go_home(self):
+        self.driver.get(self.base_url)
 
     def goto(self, url: str):
         """Go to a particular url, or a path under the base url"""

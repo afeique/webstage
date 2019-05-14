@@ -131,11 +131,7 @@ def pytest_addoption(parser):
     )
     # add options that can be passed in via the command line as args
     parser.addoption("--base-url", action="store", dest="base_url", default=cfg.base_url,
-        help="Base URL of device, defaults to value in config.json")
-    parser.addoption("--username", action="store", dest="username", default=cfg.username,
-        help="Username for logging in, defaults to value in config.json")
-    parser.addoption("--password", action="store", dest="password", default=cfg.password,
-        help="Password for logging in, defaults to value in config.json")
+        help="Base URL of site being tested, defaults to value in config.json")
 
 
 def pytest_collection_modifyitems(config, items):
