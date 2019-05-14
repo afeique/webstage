@@ -1,12 +1,6 @@
-# Siris OS 2 Acceptance Tests
+# Webstage
 
-These are acceptance tests which can be run using `pytest`. Many of these tests
- rely on the `RemoteWebdriver` in [selenium-python] for browser instrumentation.
- The [selenium standalone server] is required, either on a remote host or the
- localhost, to run the `RemoteWebdriver`.
-
-[selenium-python]: https://selenium-python.readthedocs.io/
-[selenium standalone server]: https://www.seleniumhq.org/download/
+Webstage is a simple BDD-style framework running on top of pytest and selenium.
 
 ## Setup
 
