@@ -38,7 +38,7 @@ class Config():
         "webdriver": {
             "command_executor": "http://127.0.0.1:4444/wd/hub",
             "desired_capabilities": {
-                "browserName": "chrome",
+                "browserName": "chromedriver",
                 "chromeOptions": {
                     "args": [
                         "--disable-extensions",
